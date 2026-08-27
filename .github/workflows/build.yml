@@ -1,0 +1,87 @@
+name: build
+
+# Builds a real Windows .exe (plus Linux and macOS binaries) on GitHub's own
+# runners. This is the easiest way to get a .exe without a Windows machine:
+# push the repo, and download the artifacts from the Actions tab when it finishes.
+#
+# Pushing a tag like v1.0 additionally attaches the binaries to a GitHub Release.
+#
+# NOTE: pushing changes to this file needs a token with the `workflow` scope
+# (classic PAT) or "Workflows: write" (fine-grained). Without it GitHub rejects
+# the push with "refusing to allow a Personal Access Token to create or update
+# workflow ... without `workflow` scope".
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:        # lets you trigger it by hand from the Actions tab
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: BlockAdventure-windows
+            binary: dist/BlockAdventure.exe
+          - os: ubuntu-latest
+            artifact: BlockAdventure-linux
+            binary: dist/BlockAdventure
+          - os: macos-latest
+            artifact: BlockAdventure-macos
+            binary: dist/BlockAdventure
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pygame pyinstaller pytest
+
+      - name: Run tests
+        run: python -m pytest game/tests -q
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+
+      - name: Build
+        run: python build.py
+
+      - name: Check the binary exists
+        shell: bash
+        run: test -f "${{ matrix.binary }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.binary }}
+          if-no-files-found: error
+
+  release:
+    # Only for tag pushes.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Attach binaries to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
