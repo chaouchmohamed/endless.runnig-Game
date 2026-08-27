@@ -1,0 +1,6 @@
+# pygame is the only runtime dependency. Everything else - all art, all sound -
+# is generated procedurally at runtime.
+pygame>=2.5.0
+
+# Test-only.
+pytest>=7.4.0
