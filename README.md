@@ -1,5 +1,7 @@
 # BLOCK ADVENTURE
 
+we need to try every thing and build every thing >
+
 A pseudo-3D, three-lane runner with 200 hand-paced levels, 25 characters, 8 worlds
 and 6 upgradeable power-ups.
 
